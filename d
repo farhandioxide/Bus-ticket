@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #define USERFILE "user.txt"
 
@@ -11,15 +12,18 @@ void viewEntries();
 void searchEntry();
 void editEntry();
 void deleteEntry();
+void exportEntries();
 void clearInput() { while (getchar() != '\n'); }
 
 char currentUser[30];  // Store the logged-in username
 
 int main() {
     int choice;
+    char cchoice;
 
     printf("=== Personal Diary Program ===\n");
 
+    // Signup/Login loop
     while (1) {
         printf("\n1. Signup\n");
         printf("2. Login\n");
@@ -36,32 +40,36 @@ int main() {
         else exit(0);
     }
 
-    // Logged in main menu
+    // Logged-in main menu with shortcuts
     while (1) {
         printf("\n=== Diary Menu ===\n");
-        printf("1. Add Entry\n");
-        printf("2. View Entries\n");
-        printf("3. Search Entry\n");
-        printf("4. Edit Entry\n");
-        printf("5. Delete Entry\n");
-        printf("6. Exit\n");
+        printf("A. Add Entry\n");
+        printf("V. View Entries\n");
+        printf("S. Search Entry\n");
+        printf("E. Edit Entry\n");
+        printf("D. Delete Entry\n");
+        printf("X. Export Entries\n");
+        printf("Q. Quit\n");
         printf("Choose: ");
-        scanf("%d", &choice);
+        scanf(" %c", &cchoice);
         clearInput();
+        cchoice = toupper(cchoice);
 
-        switch (choice) {
-            case 1: addEntry(); break;
-            case 2: viewEntries(); break;
-            case 3: searchEntry(); break;
-            case 4: editEntry(); break;
-            case 5: deleteEntry(); break;
-            case 6: exit(0);
+        switch (cchoice) {
+            case 'A': addEntry(); break;
+            case 'V': viewEntries(); break;
+            case 'S': searchEntry(); break;
+            case 'E': editEntry(); break;
+            case 'D': deleteEntry(); break;
+            case 'X': exportEntries(); break;
+            case 'Q': exit(0);
             default: printf("Invalid option.\n");
         }
     }
 
     return 0;
 }
+
 
 void signup() {
     FILE *fp = fopen(USERFILE, "a");  // append mode to allow multiple users
@@ -314,10 +322,28 @@ void deleteEntry() {
             current++;
             if (current == target) {
                 found = 1;
+
+                // Display entry before deleting
+                printf("\n=== Entry #%d ===\n", target);
+                printf("%s", line);
                 while (fgets(line, sizeof(line), fp)) {
+                    printf("%s", line);
                     if (strstr(line, "---")) break;
                 }
-                continue;
+
+                // Confirm deletion
+                char confirm;
+                printf("Are you sure you want to delete this entry? (Y/N): ");
+                scanf(" %c", &confirm);
+                clearInput();
+                if (toupper(confirm) == 'Y') {
+                    printf("Entry deleted.\n");
+                    continue;  // skip writing this entry to temp file
+                } else {
+                    // Rewind to start of entry for copying it
+                    fseek(fp, -strlen(line), SEEK_CUR);
+                    current--; // maintain entry count
+                }
             }
         }
         fputs(line, temp);
@@ -329,8 +355,34 @@ void deleteEntry() {
     remove(filename);
     rename("temp.txt", filename);
 
-    if (found)
-        printf("Entry #%d deleted successfully.\n", target);
-    else
+    if (!found)
         printf("No entry found with that number.\n");
+}
+
+//pdf
+
+void exportEntries() {
+    char filename[50], exportFile[50];
+    sprintf(filename, "%s_diary.txt", currentUser);
+    sprintf(exportFile, "%s_export.txt", currentUser);
+
+    FILE *fp = fopen(filename, "r");
+    FILE *out = fopen(exportFile, "w");
+    char line[600];
+    int current = 0;
+
+    if (!fp || !out) {
+        printf("File error.\n");
+        return;
+    }
+
+    while (fgets(line, sizeof(line), fp)) {
+        if (strstr(line, "DATE:")) current++;
+        fprintf(out, "%s", line);
+    }
+
+    fclose(fp);
+    fclose(out);
+
+    printf("All entries exported to '%s'\n", exportFile);
 }
