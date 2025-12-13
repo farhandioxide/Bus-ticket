@@ -22,23 +22,17 @@ void ViewSeat(int busNo);
 void makePayment(pd *passdetails);
 void Payment();
 void checkUserinfo();
-// New Price Function Prototype
-int getBusPrice(int busNo);
 
-// New helper functions
 void getBusInfo(int busNo, char *className, char *timeName);
 void loadBookedSeats(int busNo, int bookedSeats[], int *bookedCount);
 
-// Payment/status struct must be defined before use
-
-// simple booking record struct for in-memory use (not strictly required)
 typedef struct {
     char username[50];
     int busNo;
     int numSeats;
     char travelClass[32];
     char travelTime[32];
-    int assignedSeats[20]; // naive
+    int assignedSeats[20];
 } Booking;
 
 void clearInputBuffer() {
@@ -101,21 +95,6 @@ int loginUser(char usernm[], int userpass, char actualUser[]) {
     return 0;
 }
 
-// New function to get the price per seat based on bus number
-int getBusPrice(int busNo) {
-    if (busNo == 1001) return 1800;
-    if (busNo == 1002) return 1700;
-    if (busNo == 1003) return 3300;
-    if (busNo == 2001) return 1800;
-    if (busNo == 2002) return 2600;
-    if (busNo == 2003) return 3100;
-    if (busNo == 3001) return 1750;
-    if (busNo == 3002) return 2500;
-    if (busNo == 3003) return 3100;
-    if (busNo == 4001) return 4000;
-    return 0; // Default price if bus not found
-}
-
 int main() {
     int choice;
     char usernm[50];
@@ -125,9 +104,9 @@ int main() {
     int adminpass;
 
     while (1) {
-        printf("\n=====================\n");
+        printf("\n====================\n");
         printf("    MAIN MENU\n");
-        printf("=====================\n");
+        printf("======================\n");
         printf("1>> New user sign up\n");
         printf("2>> Login as User\n");
         printf("3>> Login as Admin\n");
@@ -199,7 +178,7 @@ void UserMenu()
     while(1)
     {
         printf("\n=====================\n");
-        printf("    USER MENU\n");
+        printf("     USER MENU\n");
         printf("=====================\n");
         printf("1>>Check available bus and schedule\n");
         printf("2>>Reserve ticket\n");
@@ -232,7 +211,7 @@ void AdminMenu()
     while(1)
     {
         printf("\n=====================\n");
-        printf("    ADMIN MENU\n");
+        printf("     ADMIN MENU\n");
         printf("=====================\n");
         printf("1>>Check available bus details\n");
         printf("2>>Cancel ticket\n");
@@ -261,9 +240,9 @@ void AdminMenu()
 
 void BusAvail()
 {
-    printf("---------------------------------------------------------------------------------------\n");
+    printf("------------------------------------------------------------------------------------------------\n");
     printf("Bus.No\tClass\t\tName\t\t\tDestination\t\tCharges\t\tTime\n");
-    printf("---------------------------------------------------------------------------------------\n");
+    printf("------------------------------------------------------------------------------------------------\n");
 
     // MORNING
     printf("---- Morning Schedule ----\n");
@@ -281,14 +260,14 @@ void BusAvail()
     printf("\n---- Night Schedule ----\n");
     printf("3001\tBusiness\tRoyal Express       \tDhaka to Chittagong\ttk 1750\t\t7:30  PM\n");
     printf("3002\tPremium \tSundarban Travels   \tDhaka to Chittagong\ttk 2500\t\t9:00  PM\n");
-    // Updated per your DOs: 3003 should show VIP and 9:40 PM
+\
     printf("3003\tVIP/Sleeper\tStar Line           \tDhaka to Chittagong\ttk 3100\t\t9:40  PM\n");
 
     // SPECIAL NIGHT ONLY
     printf("\n---- Special Night Only ----\n");
     printf("4001\tVIP/Sleeper\tNight Rider         \tDhaka to Chittagong\ttk 4000\t\t11:45 PM\n");
 
-    printf("---------------------------------------------------------------------------------------\n");
+    printf("------------------------------------------------------------------------------------------------\n");
     printf("Press any key to return to user menu...");
     getch();
 }
@@ -331,12 +310,15 @@ void loadBookedSeats(int busNo, int bookedSeats[], int *bookedCount) {
 
     char line[512];
     while (fgets(line, sizeof(line), bf)) {
-        // parse first two tokens: username and busNo
+        // parse first two tokens: username and date
         char copy[512];
         strcpy(copy, line);
         char *tk = strtok(copy, " \n\t");
         if (!tk) continue;
         // tk is username
+        tk = strtok(NULL, " \n\t"); // date (SKIP)
+        if (!tk) continue;
+        
         tk = strtok(NULL, " \n\t"); // busNo
         if (!tk) continue;
         int fileBus = atoi(tk);
@@ -398,15 +380,19 @@ void ReserveTicket()
     printf("Enter your username: ");
     fgets(username, sizeof(username), stdin);
     username[strcspn(username, "\n")] = '\0';
+    
+    // Get date
+    printf("Enter date(dd/mm/yyyy): ");
+    fgets(date, sizeof(date), stdin);
+    date[strcspn(date, "\n")] = '\0';
+
 
     // Show bus availability
     BusAvail();
 
-    printf("\nEnter date(dd/mm/yyyy): ");
-    fgets(date, sizeof(date), stdin);
-    date[strcspn(date, "\n")] = '\0';
     // Ask for bus number with validation
     while (1) {
+        
         printf("\nEnter Bus Number you want to book (or 0 to cancel): ");
         if (scanf("%d", &busNo) != 1) {
             printf("Invalid input. Please enter numeric bus number.\n");
@@ -506,11 +492,7 @@ void ReserveTicket()
         printf("%d", chosenSeats[i]);
         if (i < chosenCount-1) printf(" // ");
     }
-
-    int pricePerSeat = getBusPrice(busNo);
-    int totalPrice = pricePerSeat * chosenCount;
-    printf("\nPrice per Seat: Tk %d\n", pricePerSeat);
-    printf("TOTAL AMOUNT DUE: Tk %d\n", totalPrice);
+    printf("\n");
 
     // Call makePayment() with predetermined code
     makePayment(&payment);
@@ -527,8 +509,9 @@ void ReserveTicket()
     if (bf == NULL) {
         printf("Error opening bookings file. Reservation failed.\n");
     } else {
-        // format: username busNo numSeats class time seat1 seat2 ...
-        fprintf(bf, "%s %d %d %s %s", username, busNo, numSeats, className, timeName);
+        // format: username date busNo numSeats class time seat1 seat2 ...
+        // *** MODIFIED TO INCLUDE DATE ***
+        fprintf(bf, "%s %s %d %d %s %s", username, date, busNo, numSeats, className, timeName);
         for (int s = 0; s < chosenCount; s++) fprintf(bf, " %d", chosenSeats[s]);
         fprintf(bf, "\n");
         fclose(bf);
@@ -572,7 +555,7 @@ void Payment()
 
     printf("\nPayment successful!\n");
     printf("Press any key to continue...");
-    getch();  // Wait for user before returning
+    getch(); 
 }
 
 // Payment function with predetermined code 1234
@@ -584,7 +567,7 @@ void makePayment(pd *passdetails)
     char c;
 
     printf("\n\n===================================\n");
-    printf("\tTICKET PAYMENT SECTION\n");
+    printf("\t    TICKET PAYMENT SECTION\n");
     printf("===================================\n");
     printf("Your current payment status is: %s\n", passdetails->payment_status);
 
@@ -678,10 +661,10 @@ void CancelTicket()
             char line[512];
             int cancelled = 0;
             while (fgets(line, sizeof(line), in)) {
-                // parse username and busNo from line
+                // parse username and busNo from line, skipping the date token (%*s)
                 char fileUser[50];
                 int fileBus;
-                if (sscanf(line, "%s %d", fileUser, &fileBus) >= 2) {
+                if (sscanf(line, "%s %*s %d", fileUser, &fileBus) >= 2) {
                     if (strcmp(fileUser, username) == 0 && fileBus == busNo) {
                         cancelled = 1;
                         continue; // skip writing this booking
@@ -730,12 +713,14 @@ void ViewTicket()
     char line[512];
     int found = 0;
     while (fgets(line, sizeof(line), bf)) {
-        // parse: username busNo numSeats class time seat1 seat2 ...
-        char fileUser[50], className[50], timeName[50];
+        // parse: username date busNo numSeats class time seat1 seat2 ...
+        char fileUser[50], fileDate[12], className[50], timeName[50]; // Added fileDate
         int fileBus, fileNumSeats;
         char *p = line;
-        // Use sscanf to pull first five tokens
-        if (sscanf(line, "%s %d %d %s %s", fileUser, &fileBus, &fileNumSeats, className, timeName) < 5) continue;
+        
+        // Use sscanf to pull first six tokens: user, date, busNo, numSeats, class, time
+        if (sscanf(line, "%s %s %d %d %s %s", fileUser, fileDate, &fileBus, &fileNumSeats, className, timeName) < 6) continue;
+        
         if (strcmp(fileUser, username) == 0) {
             found = 1;
             // collect seat numbers from rest of line
@@ -747,25 +732,40 @@ void ViewTicket()
             int tokenIdx = 0;
             while (tk != NULL) {
                 tokenIdx++;
-                if (tokenIdx == 5) {
-                    // next tokens are seat numbers
-                    tk = strtok(NULL, " \n\t");
-                    while (tk != NULL && seatCount < 20) {
-                        seats[seatCount++] = atoi(tk);
-                        tk = strtok(NULL, " \n\t");
+                // Seat numbers start at the 7th token (after user, date, busNo, numSeats, class, time)
+                if (tokenIdx >= 7) { 
+                    int seat = atoi(tk);
+                    if (seat > 0 && seatCount < 20) {
+                        seats[seatCount++] = seat;
                     }
-                    break;
                 }
                 tk = strtok(NULL, " \n\t");
             }
+            // For older/simpler format, seats might start right after time (6th token)
+            if (seatCount == 0) {
+                 strcpy(copy, line);
+                 tk = strtok(copy, " \n\t"); // user
+                 for (int i = 0; i < 5; i++) tk = strtok(NULL, " \n\t"); // skip date, busNo, numSeats, class, time
+                 
+                 while (tk != NULL && seatCount < 20) {
+                    tk = strtok(NULL, " \n\t");
+                    if (tk != NULL) {
+                        int seat = atoi(tk);
+                        if (seat > 0 && seatCount < 20) {
+                            seats[seatCount++] = seat;
+                        }
+                    }
+                 }
+            }
 
-            // Print a formatted ticket preview per your sample
+
+            // Print a formatted ticket preview
             printf("==========================================\n");
             printf("     TICKET PREVIEW FOR %s\n", fileUser);
             printf("==========================================\n");
             printf("| Name: %s\n", fileUser);
-            // For Date we don't have it saved; show placeholder
-            printf("| Date: %s\n", "22/10/2025"); // placeholder — you can store date in bookings if needed
+            printf("| Date: %s\n", fileDate); // DISPLAYING THE SAVED DATE
+            
             // Map bus number to name/time for nicer display (minimal)
             char busName[50] = "Unknown";
             char busTime[20] = "Unknown";
@@ -782,10 +782,7 @@ void ViewTicket()
 
             printf("| Bus name(no): %s(%d)\n", busName, fileBus);
             printf("| Time: %s\n", busTime);
-            int pricePerSeat = getBusPrice(fileBus);
-            int totalPrice = pricePerSeat * fileNumSeats;
-            printf("| Price per seat: Tk %d\n", pricePerSeat);
-            printf("| Total Price:  Tk %d (for %d seats excluding 0)\n", totalPrice, fileNumSeats);
+
             // seats print: if seatCount>0 show them, else show placeholders "1 // 2 // 3"
             if (seatCount > 0) {
                 printf("| Seats no.: ");
